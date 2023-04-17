@@ -29,7 +29,7 @@ Generally, web, or mobile solutions are implemented based on what is called the 
 
 #### *We will be using **RedHat** OS for this project*
 
-1. We launch 2 instances that will serve as a ***WEB SERVER*** and ***DATABASE SERVER***.
+1. We launch 2 instances that will serve as a ***WEB SERVER*** and ***DB SERVER***.
 ##### *Take note of the **Availability Zones** for the 2 instances*
 2. Attach all 3 volumes one by one to your Web Server EC2 instance
 #### Click on **Volumes**, under Elastic Block Store(EBS).
@@ -47,7 +47,9 @@ Generally, web, or mobile solutions are implemented based on what is called the 
 ##### Under Instance field, search for the name of the instance you want to attach it to, and select it, then Save
 ![like so](./images/attach-to-webserver.png)
 ###### *Attach the other 2 Volumes*
-#### Then go back to Instances and copy the SSH Key for "Web Server"
+
+## PREPARE THE WEB SERVER
+#### Go to Instances and copy the SSH Key for "Web Server"
 
 #### Then go to a Terminal, `cd` to where your ***pem*** file is located and connect to the ***Web Server*** instance using the SSH Key:
 >`ssh -i "Jennee-EC2.pem" ec2-user@ec2-35-179-94-141.eu-west-2.compute.amazonaws.com`
@@ -79,12 +81,14 @@ Generally, web, or mobile solutions are implemented based on what is called the 
 
 #### Type "**?**" to display the available options. 
 
+#### Type ***n*** to create a new partition
+
 #### Type *1* for partition number
 #### Click ***enter*** for the next 2 prompts.
 
 #### Change the ***partition type*** to *Linux LVM* by typing 8e00
 
-#### Type `p` to check what youve done
+#### Type `p` to check what you've done
 
 #### Then type `w` to write and type `yes` to confirm
 ![like so](./images/create-single-partition.png)
@@ -169,13 +173,13 @@ important)
 21. Update ***/etc/fstab*** file so that the mount configuration will persist after restart of the server.
 Click on the next button To update the /etc/fstab file
 
-#### Run `ls blkid` and copy the 2 lines that start with ***/dev/mapper***, and paste in a notepad. Delete everything that comes after the 2nd quatation marks. For both lines.
+#### Run `sudo blkid` and copy the 2 lines that start with ***/dev/mapper***, and paste in a notepad. Delete everything that comes after the 2nd quatation marks. For both lines.
 
 ![like s0](./images/copy-dev-mapper.png)
 
 #### Then run:
 >`sudo vi /etc/fstab`
-And add the what you copied from `lsblkid`
+And add the what you copied from `sudo blkid`
 
 ```
 UUID=f59a2db5-cb64-411f-a4e4-5c4bd93852dc  /var/www/html ext4 defaults 0 0
@@ -193,3 +197,106 @@ Verify your setup by running:
 >`df -h`
 
 ![like so](./images/verify-setup.png)
+
+<br>
+
+## PREPARE THE DATABASE SERVER
+
+#### Go to Instances and copy the SSH Key for "DB Server"
+
+#### Then go to a Terminal, `cd` to where your ***pem*** file is located and connect to the ***DB Server*** instance using the SSH Key:
+>`ssh -i "Jennee-EC2.pem" ec2-user@ec2-35-179-94-141.eu-west-2.compute.amazonaws.com`
+
+![like so](./images/connect-to-webserver.png)
+
+#### Next, open the ***/etc/hostname***
+>`vi /etc/hostname`
+
+#### Replace the ***IP address*** with the name ***dbserver***.
+#### Click on ***esc*** and `:wq` + **enter**
+
+#### Then run this command:
+>`sudo hostname dbserver`
+
+#### Follow steps 1-10 that we used for ***Webserver*** for ***dbserver***. Then instead of ***apps-lv*** like we did with the *webserver*, we'll create ***db-lv*** and mount it to **/db directory** instead of **/var/www/html/**.
+
+#### The apps-lv will be used to store data for the Website while, logs-lv will be used to store data for logs.
+11.  Run these commands:
+>`sudo lvcreate -n db-lv -L 14G vg-database`
+
+>`sudo lvcreate -n logs-lv -L 14G vg-database`
+
+12. Verify that your Logical Volume has been created successfully by running
+>`sudo lvs`
+
+![like so](./images/lvcreate-db.png)
+
+13. Verify the entire setup
+>`sudo vgdisplay -v #view complete setup - VG, PV, and LV`
+
+![like so](./images/verify-setup2.png)
+
+>`sudo lsblk`
+![like so](./images/sudo-lsblk2.png)
+
+14. Use ***mkfs.ext4*** to format the logical volumes with ext4 filesystem
+>`sudo mkfs -t ext4 /dev/vg-database/db-lv`
+
+>`sudo mkfs -t ext4 /dev/vg-database/logs-lv`
+
+![likeso](./images/format-lv2.png)
+
+15. Create a directory named **db*. with:
+>`sudo mkdir /db`
+
+16. Create /home/recovery/logs to store backup of log data
+
+>`sudo mkdir -p /home/recovery/logs`
+
+17. Mount db/ on db-lv logical volume
+
+>`sudo mount /dev/vg-database/db-lv db/`
+
+18. Use **rsync** utility to backup all the files in the log directory ***/var/log into /home/recovery/logs*** (This is required before mounting the file system)
+>`sudo rsync -av /var/log/. /home/recovery/logs/`
+
+![like so](./images/resync.png)
+
+ 19. Mount **/var/log** on **logs-lv** logical volume. (Note that all the existing data on **/var/log** will be deleted. That is why step 15 above is very
+important)
+>`sudo mount /dev/vg-database/logs-lv /var/log`
+
+20. Restore log files back into **/var/log** directory
+>`sudo rsync -av /home/recovery/logs/. /var/log`
+
+![like so](./images/restore-log-files.png)
+
+21. Update ***/etc/fstab*** file so that the mount configuration will persist after restart of the server.
+Click on the next button To update the /etc/fstab file
+
+#### Run `sudo blkid` and copy the 2 lines that start with ***/dev/mapper***, and paste in a notepad. Delete everything that comes after the 2nd quatation marks. For both lines.
+
+![like s0](./images/copy-dev-mapper2.png)
+
+#### Then run:
+>`sudo vi /etc/fstab`
+And add the what you copied from `sudo blkid`
+
+```
+UUID=315fd9a4-3bec-478d-b65f-11b69a245bf8 /db ext4 defaults 0 0
+```
+
+![like so](./images/edit-etc-fstab2.png)
+
+#### Then run this command to verify what we just did
+>`sudo mount -a`
+
+#### Reload the daemon with:
+>`sudo systemctl daemon-reload`
+
+#### Verify your setup by running:
+>`df -h`
+
+![like so](./images/verify-final-setup.png)
+
+<br>
