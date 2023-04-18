@@ -300,3 +300,101 @@ UUID=315fd9a4-3bec-478d-b65f-11b69a245bf8 /db ext4 defaults 0 0
 ![like so](./images/verify-final-setup.png)
 
 <br>
+
+## INSTALL WORDPRESS ON OUR WEBSERVER EC2
+
+1. First, connect to the ***webserver*** instance with ssh, then Update the repository, using this command
+>`sudo yum -y update`
+
+![like so](./images/sudo-yum-update.png)
+
+2. Install wget, Apache and it’s dependencies, using this command:
+>`sudo yum -y install wget httpd php php-mysqlnd php-fpm php-json`
+
+![like so](./images/install-wget.png)
+
+3. Start Apache
+>`sudo systemctl enable httpd`
+
+>`sudo systemctl start httpd`
+
+![like so](./images/httpd.png)
+
+4. To install PHP and it’s depemdencies, run these commands:
+
+>`sudo yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm`
+
+![like so](./images/install-fedora.png)
+
+>`sudo yum install yum-utils http://rpms.remirepo.net/enterprise/remi-release-8.rpm`
+
+![likeso](./images/install-utils.png)
+
+>`sudo yum module list php`
+
+![likeso](./images/module-list-php.png)
+
+>`sudo yum module reset php`
+
+![likeso](./images/module-reset-php.png)
+
+>`sudo yum module enable php:remi-7.4`
+
+![likeso](./images/enable-php-remi.png)
+
+>`sudo yum install php php-opcache php-gd php-curl php-mysqlnd`
+
+![likeso](./images/install-php-opcache.png)
+
+>`sudo systemctl start php-fpm`
+
+>`sudo systemctl enable php-fpm`
+
+>`setsebool -P httpd_execmem 1`
+
+![likeso](./images/php-fpm.png)
+
+5. Restart Apache
+>`sudo systemctl restart httpd`
+
+#### Copy the IP address to test on browser
+![like so](./images/test-ip-on-browser.png)
+
+
+6. Download wordpress and copy wordpress to var/www/html
+
+  >`mkdir wordpress && cd wordpress`
+  ###### Download wordpress
+  >`sudo wget http://wordpress.org/latest.tar.gz`
+
+  ![likeso](./images/get-wordpress.png)
+###### Extract wordpress
+  >`sudo tar xzvf latest.tar.gz`
+
+![likeso](./images/extract-wordpress.png)
+  >`sudo rm -rf latest.tar.gz`
+
+##### Copy ***wordpress/wp-config-sample.php*** into ***wordpress/wp-config.php***
+
+Note: **wordpress/wp-config.php** will be created with this command:
+  >`cp wordpress/wp-config-sample.php wordpress/wp-config.php`
+
+  ![likeso](./images/copy-wordpress.png)
+ 
+ >`sudo cp -R wordpress/* /var/www/html/`
+
+ ![likeso](./images/wordpress-content.png)
+
+7. Configure SELinux Policies
+
+  >`sudo chown -R apache:apache /var/www/html/wordpress`
+
+  >`sudo chcon -t httpd_sys_rw_content_t /var/www/html/ -R`
+
+  >`sudo setsebool -P httpd_can_network_connect=1`
+
+  >`sudo setsebool -P httpd_can_network_connect_db 1`
+
+  ![like](./images/config-SElinux.png)
+
+  
