@@ -387,7 +387,7 @@ Note: **wordpress/wp-config.php** will be created with this command:
 
 7. Configure SELinux Policies
 
-  >`sudo chown -R apache:apache /var/www/html/wordpress`
+  >`sudo chown -R apache:apache /var/www/html/`
 
   >`sudo chcon -t httpd_sys_rw_content_t /var/www/html/ -R`
 
@@ -397,4 +397,80 @@ Note: **wordpress/wp-config.php** will be created with this command:
 
   ![like](./images/config-SElinux.png)
 
-  
+  ### Install MySQL on your DB Server EC2
+
+ #### sudo yum update
+>`sudo yum install mysql-server`
+
+#### Verify that the service is up and running by using sudo systemctl status mysqld, if it is not running, restart the service and enable it so it will be running even after reboot:
+
+>`sudo systemctl restart mysqld`
+>`sudo systemctl enable mysqld`
+
+###  Configure DB to work with WordPress
+>`sudo mysql`
+
+CREATE DATABASE wordpress;
+```
+CREATE USER `wordpressuser`@`<Web-Server-Private-IP-Address>` IDENTIFIED BY 'Jennee.D.DevOps.2.1';
+```
+```
+GRANT ALL ON wordpress.* TO 'wordpressuser'@'<Web-Server-Private-IP-Address>';
+```
+>`FLUSH PRIVILEGES;`
+
+>`SHOW DATABASES;`
+
+![like](./images/sudo-msql-db.png)
+
+![like](./images/create-db-database.png)
+
+exit
+
+### Configure WordPress to connect to remote database.
+Hint: Do not forget to open MySQL port 3306 on DB Server EC2. For extra security, you shall allow access to the DB server ONLY from your Web Server’s IP address, so in the Inbound Rule configuration specify source as /32
+
+1. Install MySQL client and test that you can connect from your Web Server to your DB server by using mysql-client
+
+>`sudo yum install mysql`
+
+![like](./images/install-mysql-client-web.png)
+
+>`sudo mysql -u admin -p -h <DB-Server-Private-IP-address>`
+
+![likeso](./images/install-mysql-client.png)
+
+2. Verify if you can successfully execute `SHOW DATABASES;` command and see a list of existing databases.
+
+![like](./images/show-databases.png)
+
+3. Change permissions and configuration so Apache could use WordPress:
+>`sudo chown -R apache:apache /var/www/html/`
+![likeso](./images/change-permision.png)
+
+4. Enable TCP port 80 in Inbound Rules configuration for your Web Server EC2 (enable from everywhere 0.0.0.0/0 or from your workstation’s IP)
+
+#### Edit the "/var/www/html/wp-config.php" to connect to dataabase.
+>`sudo vi wp-config.php`
+
+![likeso](./images/edit-var.png)
+
+##### Edit the database name, username, password that you created and dbserver private IP address as host
+
+#### Disable the apache configuration(rename it to backup)
+>`sudo mv /etc/httpd/conf.d/welcome.conf /etc/httpd/conf.d/welcome.conf_backup`
+
+Open **/etc/my.cnf** and edit the file. Add ***[mysqld]*** and ***bind-address=0.0.0.0***
+>`sudo vi /etc/my.cnf`
+
+![likeso](./images/edit-my-cnf.png)
+
+Try to access from your browser the link to your WordPress with:
+
+>`http://<Web-Server-Public-IP-Address>/wordpress/`
+
+![likeso](./images/wordpress-admin.png)
+
+![wp](./images/wp-admin.png)
+
+##### We have successfully deployed a full-scale Web Solution using WordPress Content Management System (CMS) and MySQL Relational Database Management Systsem (RDBMS).
